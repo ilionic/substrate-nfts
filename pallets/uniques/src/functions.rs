@@ -48,7 +48,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
-	pub(super) fn do_create_class(
+	pub fn do_create_class(
 		class: T::ClassId,
 		owner: T::AccountId,
 		admin: T::AccountId,
@@ -115,7 +115,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		})
 	}
 
-	pub(super) fn do_mint(
+	pub fn do_mint(
 		class: T::ClassId,
 		instance: T::InstanceId,
 		owner: T::AccountId,

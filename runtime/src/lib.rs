@@ -43,6 +43,8 @@ pub use sp_runtime::{Perbill, Permill};
 /// Import the template pallet.
 pub use pallet_template;
 
+pub use pallet_nested_nfts;
+
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -286,6 +288,23 @@ impl pallet_template::Config for Runtime {
 	type Event = Event;
 }
 
+impl pallet_nested_nfts::Config for Runtime {
+	// type Currency = Balances;
+	type Event = Event;
+	type NftClassId = u32;
+	type NftInstanceId = u32;	
+	type ProtocolOrigin = frame_system::EnsureRoot<AccountId>;
+}
+
+// impl pallet_nested_nfts::Config for Runtime {
+// 	type Event = Event;
+// 	type TokenDeposit = InstanceDeposit;
+// 	type WeightInfo = weights::nft::BasiliskWeight<Runtime>;
+// 	type NftClassId = u32;
+// 	type NftInstanceId = u32;
+// 	type ProtocolOrigin = EnsureRoot<AccountId>;
+// }
+
 parameter_types! {
 	pub const ClassDeposit: Balance = 100 * DOLLARS;
 	pub const InstanceDeposit: Balance = 1 * DOLLARS;
@@ -314,6 +333,7 @@ impl pallet_uniques::Config for Runtime {
 	type WeightInfo = ();
 }
 
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -331,6 +351,7 @@ construct_runtime!(
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template,
+		NestedNFT: pallet_nested_nfts::{Pallet, Call, Event<T>, Storage},
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
 	}
 );
