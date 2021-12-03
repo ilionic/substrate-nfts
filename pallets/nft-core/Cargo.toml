@@ -1,9 +1,9 @@
 [package]
-name = 'pallet-nested-nfts'
+name = 'pallet-nft-core'
 version = '4.0.0-dev'
-description = 'FRAME pallet template for defining custom runtime logic.'
+description = 'NFT Core'
 authors = ['ilionic']
-homepage = 'https://substrate.io/'
+homepage = ''
 edition = '2021'
 license = 'Apache 2.0'
 publish = false

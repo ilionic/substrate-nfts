@@ -3,7 +3,7 @@ members = [
     'node',
     'pallets/template',
     'pallets/uniques',
-    'pallets/nested-nfts',
+    'pallets/nft-core',
     'runtime',
 ]
 [profile.release]

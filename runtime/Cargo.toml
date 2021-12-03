@@ -22,9 +22,9 @@ default-features = false
 path = '../pallets/uniques'
 version = '4.0.0-dev'
 
-[dependencies.pallet-nested-nfts]
+[dependencies.pallet-nft-core]
 default-features = false
-path = '../pallets/nested-nfts'
+path = '../pallets/nft-core'
 version = '4.0.0-dev'
 
 [build-dependencies.substrate-wasm-builder]
@@ -227,7 +227,7 @@ std = [
     'pallet-sudo/std',
     'pallet-template/std',
     'pallet-uniques/std',
-    'pallet-nested-nfts/std',
+    'pallet-nft-core/std',
     'pallet-timestamp/std',
     'pallet-transaction-payment-rpc-runtime-api/std',
     'pallet-transaction-payment/std',
