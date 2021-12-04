@@ -292,10 +292,10 @@ impl pallet_nft_core::Config for Runtime {
 	// type Currency = Balances;
 	type Event = Event;
 	type NftClassId = u32;
-	type NftInstanceId = u32;	
+	type NftInstanceId = u32;
+	type ResourceId = u32;
 	type ProtocolOrigin = frame_system::EnsureRoot<AccountId>;
 }
-
 
 parameter_types! {
 	pub const ClassDeposit: Balance = 100 * DOLLARS;
@@ -303,9 +303,9 @@ parameter_types! {
 	pub const KeyLimit: u32 = 32;
 	pub const ValueLimit: u32 = 256;
 	pub const UniquesMetadataDepositBase: Balance = 100 * DOLLARS;
-	pub const AttributeDepositBase: Balance = 10 * DOLLARS;	
+	pub const AttributeDepositBase: Balance = 10 * DOLLARS;
 	pub const DepositPerByte: Balance = DOLLARS;
-	pub const UniquesStringLimit: u32 = 128;	
+	pub const UniquesStringLimit: u32 = 128;
 }
 
 impl pallet_uniques::Config for Runtime {
@@ -324,7 +324,6 @@ impl pallet_uniques::Config for Runtime {
 	type ValueLimit = ValueLimit;
 	type WeightInfo = ();
 }
-
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(

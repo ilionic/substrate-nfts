@@ -18,7 +18,6 @@
 //! A set of constant values used in substrate runtime.
 /// Type used for expressing timestamp.
 
-
 /// Money matters.
 pub mod currency {
 	pub use crate::Balance;
