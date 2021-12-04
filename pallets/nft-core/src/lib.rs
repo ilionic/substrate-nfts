@@ -4,12 +4,7 @@
 
 use codec::HasCompact;
 use frame_support::{
-	dispatch::DispatchResult,
 	ensure,
-	traits::{
-		tokens::nonfungibles::*, BalanceStatus, Currency, NamedReservableCurrency,
-		ReservableCurrency,
-	},
 	transactional, BoundedVec,
 };
 use frame_system::ensure_signed;
@@ -19,8 +14,6 @@ use sp_std::{convert::TryInto, vec::Vec};
 
 use types::{ClassInfo, InstanceInfo};
 
-// use pallet_uniques::traits::InstanceReserve;
-// use pallet_uniques::{ClassTeam, DepositBalanceOf};
 
 // pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as
 // frame_system::Config>::AccountId>>::Balance;
@@ -29,8 +22,6 @@ pub type InstanceInfoOf<T> = InstanceInfo<
 	<T as frame_system::Config>::AccountId,
 	BoundedVec<u8, <T as pallet_uniques::Config>::StringLimit>,
 >;
-// TODO
-// pub type ResourceInfoOf<T> = 
 
 pub mod types;
 
@@ -50,15 +41,17 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		type NftClassId: Member
+		type CollectionId: Member
 			+ Parameter
 			+ Default
 			+ Copy
 			+ HasCompact
 			+ AtLeast32BitUnsigned
 			+ Into<Self::ClassId>;
+
 		type ProtocolOrigin: EnsureOrigin<Self::Origin>;
-		type NftInstanceId: Member
+
+		type NftId: Member
 			+ Parameter
 			+ Default
 			+ Copy
@@ -75,41 +68,41 @@ pub mod pallet {
 			+ AtLeast32BitUnsigned;
 	}
 
-	/// Next available class ID.
+	/// Next available collection ID.
 	#[pallet::storage]
-	#[pallet::getter(fn next_class_id)]
-	pub type NextClassId<T: Config> = StorageValue<_, T::NftClassId, ValueQuery>;
+	#[pallet::getter(fn next_collection_id)]
+	pub type NextCollectionId<T: Config> = StorageValue<_, T::CollectionId, ValueQuery>;
 
-	/// Next available token ID.
+	/// Next available NFT ID.
 	#[pallet::storage]
-	#[pallet::getter(fn next_instance_id)]
-	pub type NextInstanceId<T: Config> =
-		StorageMap<_, Twox64Concat, T::NftClassId, T::NftInstanceId, ValueQuery>;
+	#[pallet::getter(fn next_nft_id)]
+	pub type NextNftId<T: Config> =
+		StorageMap<_, Twox64Concat, T::CollectionId, T::NftId, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn classes)]
+	#[pallet::getter(fn collections)]
 	/// Stores collections info
-	pub type Classes<T: Config> = StorageMap<_, Twox64Concat, T::NftClassId, ClassInfoOf<T>>;
+	pub type Collections<T: Config> = StorageMap<_, Twox64Concat, T::CollectionId, ClassInfoOf<T>>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn instances)]
-	/// Stores nft instance info
-	pub type Instances<T: Config> = StorageDoubleMap<
+	#[pallet::getter(fn nfts)]
+	/// Stores nft info
+	pub type NFTs<T: Config> = StorageDoubleMap<
 		_,
 		Twox64Concat,
-		T::NftClassId,
+		T::CollectionId,
 		Twox64Concat,
-		T::NftInstanceId,
+		T::NftId,
 		InstanceInfoOf<T>,
 	>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn resources)]
-	/// Stores nft instance info
+	/// Stores resource info
 	pub type Resources<T: Config> = StorageDoubleMap<
 		_,
 		Twox64Concat,
-		T::NftInstanceId,
+		T::NftId,
 		Twox64Concat,
 		T::ResourceId,
 		InstanceInfoOf<T>,
@@ -124,25 +117,22 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Event documentation should end with an array that provides descriptive names for event
-		/// parameters. [something, who]
-		SomethingStored(u32, T::AccountId),
-		ClassCreated(T::AccountId, T::NftClassId),
-		InstanceMinted(T::AccountId, T::NftClassId, T::NftInstanceId),
-		NFTBurned(T::AccountId, T::NftInstanceId),
-		CollectionBurned(T::AccountId, T::NftClassId),
-		NFTSent(T::AccountId, T::AccountId, T::NftClassId, T::NftInstanceId),
-		IssuerChanged(T::AccountId, T::AccountId, T::NftClassId),
+		CollectionCreated(T::AccountId, T::CollectionId),
+		NftMinted(T::AccountId, T::CollectionId, T::NftId),
+		NFTBurned(T::AccountId, T::NftId),
+		CollectionBurned(T::AccountId, T::CollectionId),
+		NFTSent(T::AccountId, T::AccountId, T::CollectionId, T::NftId),
+		IssuerChanged(T::AccountId, T::AccountId, T::CollectionId),
 		PropertySet(
-			T::NftClassId,
-			Option<T::NftInstanceId>,
+			T::CollectionId,
+			Option<T::NftId>,
 			BoundedVec<u8, T::KeyLimit>,
 			BoundedVec<u8, T::ValueLimit>,
 		),
-		CollectionLocked(T::AccountId, T::NftClassId),
-		ResourceAdded(T::NftInstanceId, T::ResourceId),
-		ResourceAccepted(T::NftInstanceId, T::ResourceId),
-		PrioritySet(T::NftClassId, T::NftInstanceId),
+		CollectionLocked(T::AccountId, T::CollectionId),
+		ResourceAdded(T::NftId, T::ResourceId),
+		ResourceAccepted(T::NftId, T::ResourceId),
+		PrioritySet(T::CollectionId, T::NftId),
 	}
 
 	// Errors inform users that something went wrong.
@@ -153,10 +143,10 @@ pub mod pallet {
 		/// Errors should have helpful documentation associated with them.
 		StorageOverflow,
 		TooLong,
-		NoAvailableClassId,
+		NoAvailableCollectionId,
 		MetadataNotSet,
 		AuthorNotSet,
-		NoAvailableInstanceId,
+		NoAvailableNftId,
 		NotInRange,
 		RoyaltyNotSet,
 	}
@@ -167,16 +157,16 @@ pub mod pallet {
 		/// Sets metadata and the royalty attribute
 		///
 		/// Parameters:
-		/// - `class_id`: The class of the asset to be minted.
-		/// - `instance_id`: The instance value of the asset to be minted.
+		/// - `collection_id`: The class of the asset to be minted.
+		/// - `nft_id`: The nft value of the asset to be minted.
 		/// - `author`: Receiver of the royalty
 		/// - `royalty`: Percentage reward from each trade for the author
-		/// - `metadata`: Arbitrary data about an instance, e.g. IPFS hash
+		/// - `metadata`: Arbitrary data about an nft, e.g. IPFS hash
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		#[transactional]
 		pub fn mint_nft(
 			origin: OriginFor<T>,
-			class_id: T::NftClassId,
+			collection_id: T::CollectionId,
 			author: Option<T::AccountId>,
 			royalty: Option<u8>,
 			metadata: Option<Vec<u8>>,
@@ -190,18 +180,18 @@ pub mod pallet {
 				ensure!(r < 100, Error::<T>::NotInRange);
 			}
 
-			let instance_id: T::NftInstanceId = NextInstanceId::<T>::try_mutate(
-				class_id,
-				|id| -> Result<T::NftInstanceId, DispatchError> {
+			let nft_id: T::NftId = NextNftId::<T>::try_mutate(
+				collection_id,
+				|id| -> Result<T::NftId, DispatchError> {
 					let current_id = *id;
-					*id = id.checked_add(&One::one()).ok_or(Error::<T>::NoAvailableInstanceId)?;
+					*id = id.checked_add(&One::one()).ok_or(Error::<T>::NoAvailableNftId)?;
 					Ok(current_id)
 				},
 			)?;
 
 			pallet_uniques::Pallet::<T>::do_mint(
-				class_id.into(),
-				instance_id.into(),
+				collection_id.into(),
+				nft_id.into(),
 				sender.clone().unwrap_or_default(),
 				|_details| Ok(()),
 			)?;
@@ -211,21 +201,22 @@ pub mod pallet {
 			let author = author.ok_or(Error::<T>::AuthorNotSet)?;
 			let royalty = royalty.ok_or(Error::<T>::RoyaltyNotSet)?;
 
-			Instances::<T>::insert(
-				class_id,
-				instance_id,
+			NFTs::<T>::insert(
+				collection_id,
+				nft_id,
 				InstanceInfo { author, royalty, metadata: metadata_bounded },
 			);
 
-			Self::deposit_event(Event::InstanceMinted(
+			Self::deposit_event(Event::NftMinted(
 				sender.unwrap_or_default(),
-				class_id,
-				instance_id,
+				collection_id,
+				nft_id,
 			));
 
 			Ok(())
 		}
 
+		/// Mint a collection
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		#[transactional]
 		pub fn mint_collection(origin: OriginFor<T>, metadata: Vec<u8>) -> DispatchResult {
@@ -234,38 +225,38 @@ pub mod pallet {
 				Err(origin) => Some(ensure_signed(origin)?),
 			};
 
-			let class_id =
-				NextClassId::<T>::try_mutate(|id| -> Result<T::NftClassId, DispatchError> {
+			let collection_id =
+				NextCollectionId::<T>::try_mutate(|id| -> Result<T::CollectionId, DispatchError> {
 					let current_id = *id;
-					*id = id.checked_add(&One::one()).ok_or(Error::<T>::NoAvailableClassId)?;
+					*id = id.checked_add(&One::one()).ok_or(Error::<T>::NoAvailableCollectionId)?;
 					Ok(current_id)
 				})?;
 
 			let metadata_bounded = Self::to_bounded_string(metadata)?;
 
 			pallet_uniques::Pallet::<T>::do_create_class(
-				class_id.into(),
+				collection_id.into(),
 				sender.clone().unwrap_or_default(),
 				sender.clone().unwrap_or_default(),
 				T::ClassDeposit::get(),
 				false,
 				pallet_uniques::Event::Created(
-					class_id.into(),
+					collection_id.into(),
 					sender.clone().unwrap_or_default(),
 					sender.clone().unwrap_or_default(),
 				),
 			)?;
 
-			Classes::<T>::insert(class_id, ClassInfo { metadata: metadata_bounded });
+			Collections::<T>::insert(collection_id, ClassInfo { metadata: metadata_bounded });
 
-			Self::deposit_event(Event::ClassCreated(sender.unwrap_or_default(), class_id));
+			Self::deposit_event(Event::CollectionCreated(sender.unwrap_or_default(), collection_id));
 			Ok(())
 		}
 
 		/// burn nft
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		#[transactional]
-		pub fn burn_nft(origin: OriginFor<T>, nft_id: T::NftInstanceId) -> DispatchResult {
+		pub fn burn_nft(origin: OriginFor<T>, nft_id: T::NftId) -> DispatchResult {
 			let sender = match T::ProtocolOrigin::try_origin(origin) {
 				Ok(_) => None,
 				Err(origin) => Some(ensure_signed(origin)?),
@@ -281,7 +272,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn burn_collection(
 			origin: OriginFor<T>,
-			collection_id: T::NftClassId,
+			collection_id: T::CollectionId,
 		) -> DispatchResult {
 			let sender = match T::ProtocolOrigin::try_origin(origin) {
 				Ok(_) => None,
@@ -297,8 +288,8 @@ pub mod pallet {
 		#[transactional]
 		pub fn send(
 			origin: OriginFor<T>,
-			collection_id: T::NftClassId,
-			nft_id: T::NftInstanceId,
+			collection_id: T::CollectionId,
+			nft_id: T::NftId,
 			dest: <T::Lookup as StaticLookup>::Source,
 		) -> DispatchResult {
 			let sender = match T::ProtocolOrigin::try_origin(origin) {
@@ -316,12 +307,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// changing the issuer of a collection ( or a base? )
+		/// changing the issuer of a collection or a base
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		#[transactional]
 		pub fn change_issuer(
 			origin: OriginFor<T>,
-			collection_id: T::NftClassId,
+			collection_id: T::CollectionId,
 			dest: <T::Lookup as StaticLookup>::Source,
 		) -> DispatchResult {
 			let sender = match T::ProtocolOrigin::try_origin(origin) {
@@ -343,8 +334,8 @@ pub mod pallet {
 		#[transactional]
 		pub fn set_property(
 			origin: OriginFor<T>,
-			#[pallet::compact] collection_id: T::NftClassId,
-			maybe_nft_id: Option<T::NftInstanceId>,
+			#[pallet::compact] collection_id: T::CollectionId,
+			maybe_nft_id: Option<T::NftId>,
 			key: BoundedVec<u8, T::KeyLimit>,
 			value: BoundedVec<u8, T::ValueLimit>,
 		) -> DispatchResult {
@@ -362,7 +353,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn lock_collection(
 			origin: OriginFor<T>,
-			collection_id: T::NftClassId,
+			collection_id: T::CollectionId,
 		) -> DispatchResult {
 			let sender = match T::ProtocolOrigin::try_origin(origin) {
 				Ok(_) => None,
@@ -381,7 +372,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn add_resource(
 			origin: OriginFor<T>,
-			nft_id: T::NftInstanceId,
+			nft_id: T::NftId,
 			resource_id: T::ResourceId,
 		) -> DispatchResult {
 			let sender = match T::ProtocolOrigin::try_origin(origin) {
@@ -401,7 +392,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn accept(
 			origin: OriginFor<T>,
-			nft_id: T::NftInstanceId,
+			nft_id: T::NftId,
 			resource_id: T::ResourceId,
 		) -> DispatchResult {
 			let sender = match T::ProtocolOrigin::try_origin(origin) {
@@ -420,8 +411,8 @@ pub mod pallet {
 		#[transactional]
 		pub fn set_priority(
 			origin: OriginFor<T>,
-			collection_id: T::NftClassId,
-			nft_id: T::NftInstanceId,
+			collection_id: T::CollectionId,
+			nft_id: T::NftId,
 		) -> DispatchResult {
 			let sender = match T::ProtocolOrigin::try_origin(origin) {
 				Ok(_) => None,

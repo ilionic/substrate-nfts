@@ -291,8 +291,8 @@ impl pallet_template::Config for Runtime {
 impl pallet_nft_core::Config for Runtime {
 	// type Currency = Balances;
 	type Event = Event;
-	type NftClassId = u32;
-	type NftInstanceId = u32;
+	type CollectionId = u32;
+	type NftId = u32;
 	type ResourceId = u32;
 	type ProtocolOrigin = frame_system::EnsureRoot<AccountId>;
 }

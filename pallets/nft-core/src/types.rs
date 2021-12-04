@@ -22,15 +22,3 @@ pub struct InstanceInfo<AccountId, BoundedString> {
 	/// Arbitrary data about an instance, e.g. IPFS hash
 	pub metadata: BoundedString,
 }
-
-// TODO ResourceInfo
-// #[derive(Encode, Decode, Eq, Copy, PartialEq, Clone, RuntimeDebug, TypeInfo)]
-// #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-// pub struct ResourceInfo<BoundedString> {
-// 	base_id: Option<u32>,
-// 	pending: bool,
-// 	src: BoundedString,
-// 	slot_id: Option<BoundedString>,
-// 	thumb: Option<BoundedString>,
-// 	theme: Option<BoundedString> // TODO: theme could be a struct?
-// }
