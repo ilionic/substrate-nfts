@@ -3,10 +3,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use codec::HasCompact;
-use frame_support::{
-	ensure,
-	transactional, BoundedVec,
-};
+use frame_support::{ensure, transactional, BoundedVec};
 use frame_system::ensure_signed;
 
 use sp_runtime::traits::{AtLeast32BitUnsigned, CheckedAdd, One, StaticLookup, Zero};
@@ -14,6 +11,11 @@ use sp_std::{convert::TryInto, vec::Vec};
 
 use types::{ClassInfo, InstanceInfo};
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
 
 // pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as
 // frame_system::Config>::AccountId>>::Balance;
@@ -60,12 +62,7 @@ pub mod pallet {
 			+ From<Self::InstanceId>
 			+ Into<Self::InstanceId>;
 
-		type ResourceId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ AtLeast32BitUnsigned;
+		type ResourceId: Member + Parameter + Default + Copy + HasCompact + AtLeast32BitUnsigned;
 	}
 
 	/// Next available collection ID.
@@ -99,14 +96,8 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn resources)]
 	/// Stores resource info
-	pub type Resources<T: Config> = StorageDoubleMap<
-		_,
-		Twox64Concat,
-		T::NftId,
-		Twox64Concat,
-		T::ResourceId,
-		InstanceInfoOf<T>,
-	>;	
+	pub type Resources<T: Config> =
+		StorageDoubleMap<_, Twox64Concat, T::NftId, Twox64Concat, T::ResourceId, InstanceInfoOf<T>>;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -219,18 +210,19 @@ pub mod pallet {
 		/// Mint a collection
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		#[transactional]
-		pub fn mint_collection(origin: OriginFor<T>, metadata: Vec<u8>) -> DispatchResult {
+		pub fn create_collection(origin: OriginFor<T>, metadata: Vec<u8>) -> DispatchResult {
 			let sender = match T::ProtocolOrigin::try_origin(origin) {
 				Ok(_) => None,
 				Err(origin) => Some(ensure_signed(origin)?),
 			};
 
-			let collection_id =
-				NextCollectionId::<T>::try_mutate(|id| -> Result<T::CollectionId, DispatchError> {
+			let collection_id = NextCollectionId::<T>::try_mutate(
+				|id| -> Result<T::CollectionId, DispatchError> {
 					let current_id = *id;
 					*id = id.checked_add(&One::one()).ok_or(Error::<T>::NoAvailableCollectionId)?;
 					Ok(current_id)
-				})?;
+				},
+			)?;
 
 			let metadata_bounded = Self::to_bounded_string(metadata)?;
 
@@ -249,7 +241,10 @@ pub mod pallet {
 
 			Collections::<T>::insert(collection_id, ClassInfo { metadata: metadata_bounded });
 
-			Self::deposit_event(Event::CollectionCreated(sender.unwrap_or_default(), collection_id));
+			Self::deposit_event(Event::CollectionCreated(
+				sender.unwrap_or_default(),
+				collection_id,
+			));
 			Ok(())
 		}
 
@@ -360,10 +355,7 @@ pub mod pallet {
 				Err(origin) => Some(ensure_signed(origin)?),
 			};
 			// TODO
-			Self::deposit_event(Event::CollectionLocked(
-				sender.unwrap_or_default(),
-				collection_id,
-			));
+			Self::deposit_event(Event::CollectionLocked(sender.unwrap_or_default(), collection_id));
 			Ok(())
 		}
 
@@ -380,13 +372,10 @@ pub mod pallet {
 				Err(origin) => Some(ensure_signed(origin)?),
 			};
 			// TODO, add resource_id
-			Self::deposit_event(Event::ResourceAdded(
-				nft_id,
-				resource_id
-			));
+			Self::deposit_event(Event::ResourceAdded(nft_id, resource_id));
 			Ok(())
-		}		
-		
+		}
+
 		/// accept the addition of a new resource to an existing NFT
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		#[transactional]
@@ -399,13 +388,10 @@ pub mod pallet {
 				Ok(_) => None,
 				Err(origin) => Some(ensure_signed(origin)?),
 			};
-			Self::deposit_event(Event::ResourceAccepted(
-				nft_id,
-				resource_id,
-			));
+			Self::deposit_event(Event::ResourceAccepted(nft_id, resource_id));
 			Ok(())
-		}		
-		
+		}
+
 		/// set a different order of resource priority
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		#[transactional]
@@ -418,12 +404,9 @@ pub mod pallet {
 				Ok(_) => None,
 				Err(origin) => Some(ensure_signed(origin)?),
 			};
-			Self::deposit_event(Event::PrioritySet(
-				collection_id,
-				nft_id,
-			));
+			Self::deposit_event(Event::PrioritySet(collection_id, nft_id));
 			Ok(())
-		}			
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
