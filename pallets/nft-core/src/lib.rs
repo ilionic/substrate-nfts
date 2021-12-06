@@ -140,6 +140,7 @@ pub mod pallet {
 		NoAvailableNftId,
 		NotInRange,
 		RoyaltyNotSet,
+		CollectionUnknown
 	}
 
 	#[pallet::call]
@@ -166,6 +167,9 @@ pub mod pallet {
 				Ok(_) => None,
 				Err(origin) => Some(ensure_signed(origin)?),
 			};
+
+			let _ = Self::collections(collection_id)
+				.ok_or(Error::<T>::CollectionUnknown)?;
 
 			if let Some(r) = royalty {
 				ensure!(r < 100, Error::<T>::NotInRange);

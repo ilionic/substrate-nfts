@@ -41,15 +41,37 @@ fn create_collection_works() {
 #[test]
 fn mint_nft_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		let collection_metadata = stv("testing");
-		let nft_metadata = stv("testing");
-		assert_ok!(NFTCore::create_collection(Origin::signed(ALICE), collection_metadata));
+		assert_ok!(NFTCore::create_collection(Origin::signed(ALICE), b"metadata".to_vec()));
 		assert_ok!(NFTCore::mint_nft(
 			Origin::signed(ALICE),
 			0,
 			Some(ALICE),
-			None,
-			Some(nft_metadata)
+			Some(0),
+			Some(b"metadata".to_vec())
 		));
+		assert_ok!(NFTCore::mint_nft(
+			Origin::signed(ALICE),
+			COLLECTION_ID_0,
+			Some(ALICE),
+			Some(20),
+			Some(b"metadata".to_vec())
+		));       
+        assert_ok!(NFTCore::mint_nft(
+            Origin::signed(BOB),
+            COLLECTION_ID_0,
+            Some(CHARLIE),
+            Some(20),
+            Some(b"metadata".to_vec())
+        ));
+		assert_noop!(
+			NFTCore::mint_nft(
+				Origin::signed(ALICE),
+				NOT_EXISTING_CLASS_ID,
+				Some(CHARLIE),
+				Some(20),
+				Some(b"metadata".to_vec())
+			),
+			Error::<Test>::CollectionUnknown
+		);        
 	});
 }
